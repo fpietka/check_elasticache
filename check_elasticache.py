@@ -21,6 +21,8 @@ import datetime
 import json
 
 
+ERROR = None
+
 def get_cluster_info(region, identifier=None):
     """Function for fetching ElastiCache details"""
     elasticache = boto.elasticache.connect_to_region(region)
@@ -38,7 +40,9 @@ def get_cluster_info(region, identifier=None):
                         'DescribeCacheClustersResponse'][
                         'DescribeCacheClustersResult'][
                         'CacheClusters']]
-    except boto.exception.BotoServerError:
+    except boto.exception.BotoServerError, e:
+        global ERROR
+        ERROR = e
         info = None
     return info
 
@@ -249,6 +253,8 @@ def main():
         if not info:
             status = CRITICAL
             note = 'Unable to get ElastiCache cluster'
+            if ERROR:
+                note += ' (%s)' % ERROR.message
         else:
             status = OK
             note = '%s %s. Status: %s' % (info['Engine'],
@@ -261,6 +267,8 @@ def main():
         if not info:
             status = UNKNOWN
             note = 'Unable to get ElastiCache details and statistics'
+            if ERROR:
+                note += ' (%s)' % ERROR.message
         else:
             # Check thresholds
             try:
@@ -347,6 +355,8 @@ def main():
         if not info or not used_memory:
             status = UNKNOWN
             note = 'Unable to get ElastiCache details and statistics'
+            if ERROR:
+                note += ' (%s)' % ERROR.message
         else:
             try:
                 max_memory = float(elasticache_classes[
@@ -402,6 +412,8 @@ def main():
         if not info or not isinstance(swap, float):
             status = UNKNOWN
             note = 'Unable to get ElastiCache details and statistics'
+            if ERROR:
+                note += ' (%s)' % ERROR.message
         else:
             # Convert Bytes to MB
             swap = swap / 1000000
